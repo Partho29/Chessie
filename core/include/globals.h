@@ -54,3 +54,7 @@ void showBoard(const Bitboard&);
 string rankFileToString(const uint8_t&, const uint8_t&);
 string squareToString(const uint8_t&);
 string squareToString(const Bitboard&);
+
+
+// Other utilities
+uint64_t getRandomInclusive(const uint64_t&, const uint64_t&);

@@ -1,5 +1,5 @@
-#include "board.h"
-#include "globals.h"
+#include "../include/board.h"
+#include "../include/globals.h"
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
@@ -9,81 +9,114 @@
 
 Board::Board() {
 
-    for (int sq = 16; sq < 48; ++sq) {
-      this -> mailbox[sq] = 0;
-    }
-    // Black
-    this -> pieces[0][0] = Bitboard(1) << 60;  // king
-    this -> mailbox[60] = 0b10000001;
-    this -> pieces[0][1] = Bitboard(1) << 59; // queen
-    this -> mailbox[59] = 0b01000001;
-    this -> pieces[0][2] = Bitboard(9) << 58; // both bishops
-    this -> mailbox[58] = 0b00100001;
-    this -> mailbox[61] = 0b00100001;
-    this -> pieces[0][3] = Bitboard(33) << 57; // both knights
-    this -> mailbox[57] = 0b00010001;
-    this -> mailbox[62] = 0b00010001;
-    this -> pieces[0][4] = Bitboard(129) << 56; // both rooks
-    this -> mailbox[56] = 0b00001001;
-    this -> mailbox[63] = 0b00001001;
-    this -> pieces[0][5] = Bitboard(255) << 48; // all pawns
-    this -> mailbox[55] = 0b00000101;
-    this -> mailbox[54] = 0b00000101;
-    this -> mailbox[53] = 0b00000101;
-    this -> mailbox[52] = 0b00000101;
-    this -> mailbox[51] = 0b00000101;
-    this -> mailbox[50] = 0b00000101;
-    this -> mailbox[49] = 0b00000101;
-    this -> mailbox[48] = 0b00000101;
-
-    this -> occupancy[0] = Bitboard(65535) << 48;
-
-    // White
-    this -> pieces[1][0] = Bitboard(1) << 4;  // king
-    this -> mailbox[4] = 0b10000011;
-    this -> pieces[1][1] = Bitboard(1) << 3; // queen
-    this -> mailbox[3] = 0b01000011;
-    this -> pieces[1][2] = Bitboard(9) << 2; // both bishops
-    this -> mailbox[2] = 0b00100011;
-    this -> mailbox[5] = 0b00100011;
-    this -> pieces[1][3] = Bitboard(33) << 1; // both knights
-    this -> mailbox[1] = 0b00010011;
-    this -> mailbox[6] = 0b00010011;
-    this -> pieces[1][4] = Bitboard(129); // both rooks
-    this -> mailbox[0] = 0b00001011;
-    this -> mailbox[7] = 0b00001011;
-    this -> pieces[1][5] = Bitboard(255) << 8; // all pawns
-    this -> mailbox[8] = 0b00000111;
-    this -> mailbox[9] = 0b00000111;
-    this -> mailbox[10] = 0b00000111;
-    this -> mailbox[11] = 0b00000111;
-    this -> mailbox[12] = 0b00000111;
-    this -> mailbox[13] = 0b00000111;
-    this -> mailbox[14] = 0b00000111;
-    this -> mailbox[15] = 0b00000111;
-
-    this -> occupancy[1] = Bitboard(65535);
-
-
-    this -> occupancy_all = occupancy[0] | occupancy[1];
-
-    this -> sideToMove = 1;
-
-    this -> castlingRights = 0b00001111;
-
-    this -> enPassantSq = 0;
-
-    this -> halfmoveClock = 0;
-    this -> fullmoveClock = 1;
-
-    this -> moveHandler.generatePawnMoves();
-    this -> moveHandler.generateKingMoves();
-    this -> moveHandler.generateKnightMoves();
-    // this -> moveHandler.generateBishopMoves();
-    // this -> moveHandler.generateRookMoves();
-    // this -> moveHandler.printMagics();
-    this -> moveHandler.hardcodeMagics();
+  for (int sq = 16; sq < 48; ++sq) {
+    this -> mailbox[sq] = 0;
   }
+  // Black
+  this -> pieces[0][0] = Bitboard(1) << 60;  // king
+  this -> mailbox[60] = 0b10000001;
+  this -> pieces[0][1] = Bitboard(1) << 59; // queen
+  this -> mailbox[59] = 0b01000001;
+  this -> pieces[0][2] = Bitboard(9) << 58; // both bishops
+  this -> mailbox[58] = 0b00100001;
+  this -> mailbox[61] = 0b00100001;
+  this -> pieces[0][3] = Bitboard(33) << 57; // both knights
+  this -> mailbox[57] = 0b00010001;
+  this -> mailbox[62] = 0b00010001;
+  this -> pieces[0][4] = Bitboard(129) << 56; // both rooks
+  this -> mailbox[56] = 0b00001001;
+  this -> mailbox[63] = 0b00001001;
+  this -> pieces[0][5] = Bitboard(255) << 48; // all pawns
+  this -> mailbox[55] = 0b00000101;
+  this -> mailbox[54] = 0b00000101;
+  this -> mailbox[53] = 0b00000101;
+  this -> mailbox[52] = 0b00000101;
+  this -> mailbox[51] = 0b00000101;
+  this -> mailbox[50] = 0b00000101;
+  this -> mailbox[49] = 0b00000101;
+  this -> mailbox[48] = 0b00000101;
+
+  this -> occupancy[0] = Bitboard(65535) << 48;
+
+  // White
+  this -> pieces[1][0] = Bitboard(1) << 4;  // king
+  this -> mailbox[4] = 0b10000011;
+  this -> pieces[1][1] = Bitboard(1) << 3; // queen
+  this -> mailbox[3] = 0b01000011;
+  this -> pieces[1][2] = Bitboard(9) << 2; // both bishops
+  this -> mailbox[2] = 0b00100011;
+  this -> mailbox[5] = 0b00100011;
+  this -> pieces[1][3] = Bitboard(33) << 1; // both knights
+  this -> mailbox[1] = 0b00010011;
+  this -> mailbox[6] = 0b00010011;
+  this -> pieces[1][4] = Bitboard(129); // both rooks
+  this -> mailbox[0] = 0b00001011;
+  this -> mailbox[7] = 0b00001011;
+  this -> pieces[1][5] = Bitboard(255) << 8; // all pawns
+  this -> mailbox[8] = 0b00000111;
+  this -> mailbox[9] = 0b00000111;
+  this -> mailbox[10] = 0b00000111;
+  this -> mailbox[11] = 0b00000111;
+  this -> mailbox[12] = 0b00000111;
+  this -> mailbox[13] = 0b00000111;
+  this -> mailbox[14] = 0b00000111;
+  this -> mailbox[15] = 0b00000111;
+
+  this -> occupancy[1] = Bitboard(65535);
+
+
+  this -> occupancy_all = occupancy[0] | occupancy[1];
+
+  this -> sideToMove = 1;
+
+  this -> castlingRights = 0b00001111;
+
+  this -> enPassantSq = 0;
+
+  this -> halfmoveClock = 0;
+  this -> fullmoveClock = 1;
+
+  
+
+  this -> initZobrist();
+  this -> zobristHash = computeZobristHash(*this, this -> zobristKeys);
+}
+
+void Board::initZobrist() {
+  for (int side = 0; side < 2; side++)
+    for (int piece = 0; piece < 6; piece++)
+      for (int sq = 0; sq < 64; sq++)
+        zobristKeys.pieceSquare[side][piece][sq] = getRandomInclusive(0, UINT64_MAX);
+
+  zobristKeys.sideToMove = getRandomInclusive(0, UINT64_MAX);
+  for (int i = 0; i < 16; i++) zobristKeys.castlingRights[i] = getRandomInclusive(0, UINT64_MAX);
+  for (int i = 0; i < 8; i++) zobristKeys.enPassantFile[i] = getRandomInclusive(0, UINT64_MAX);
+}
+
+uint64_t computeZobristHash(const Board &board, const Board::ZobristKeys &zobrist) {
+  uint64_t hash = 0;
+  for (int side = 0; side < 2; side++) {
+    for (int piece = 0; piece < 6; piece++) {
+      Bitboard pieces = board.pieces[side][piece];
+      while (pieces) {
+        int sq = __builtin_ctzll(pieces);
+        pieces &= (pieces - 1);
+        hash ^= zobrist.pieceSquare[side][piece][sq];
+      }
+    }
+  }
+
+  if (board.sideToMove == 0)   // pick whichever side gets XORed in — Black, say (but always stick to one convention)
+    hash ^= zobrist.sideToMove;
+
+  hash ^= zobrist.castlingRights[board.castlingRights]; 
+
+  if (board.enPassantSq != 0)  // our no-ep sentinel is the value 0
+    hash ^= zobrist.enPassantFile[board.enPassantSq % 8];   // file, not full square — see below
+
+  return hash;
+}
+
 
 void Board::showBoard() {
   std::cout << "    Aa   Bb   Cc   Dd   Ee   Ff   Gg   Hh" << std::endl;
@@ -229,6 +262,10 @@ void Board::fromFEN(const string &_fen) {
 
   string fullMoveClk = fen.substr(strIndex, fen.size() - strIndex);
   this -> fullmoveClock = stoi(fullMoveClk);
+
+  this -> zobristHash = computeZobristHash(*this, this -> zobristKeys);
+
+  this -> undoStack.clear();
 
   assert(this -> toFEN() == _fen);
 }

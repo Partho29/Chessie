@@ -1,4 +1,5 @@
-#include "globals.h"
+#include "../include/globals.h"
+#include <random>
 #include <iostream>
 
 
@@ -49,3 +50,11 @@ bool    isDoublePush(const Move &move) {return (move >> 23) & 0x1;}
 uint8_t enPassantSquare(const Move &move) {return (move >> 24) & 0x3F;}
 bool    isCastling(const Move &move) {return (move >> 30) & 0x1;}
 uint8_t castleSide(const Move &move) {return (move >> 31) & 0x1;}
+
+
+uint64_t getRandomInclusive(const uint64_t &from, const uint64_t &to) {
+  static std::random_device rd;
+  static std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint64_t> dist(from, to);
+  return dist(gen);
+}

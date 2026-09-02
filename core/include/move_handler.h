@@ -24,6 +24,7 @@ class Move_Handler {
     MagicEntry rookMagics[64];
     MagicEntry bishopMagics[64];
 
+    Move_Handler();
     void generatePawnMoves();
     void generateKnightMoves();
     void generateKingMoves();

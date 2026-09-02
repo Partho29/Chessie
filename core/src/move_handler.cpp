@@ -1,8 +1,7 @@
-#include "move_handler.h"
-
-#include "globals.h"
+#include "../include/move_handler.h"
+#include "../include/board.h"
+#include "../include/globals.h"
 #include <algorithm>
-#include "board.h"
 #include <cassert>
 #include <cstdint>
 #include <fstream>
@@ -11,6 +10,12 @@
 #include <random>
 #include <iostream>
 
+Move_Handler::Move_Handler() {
+  this -> generatePawnMoves();
+  this -> generateKingMoves();
+  this -> generateKnightMoves();
+  this -> hardcodeMagics();
+}
 
 void Move_Handler::generatePawnMoves() {
   uint8_t pos;
@@ -563,6 +568,7 @@ void Move_Handler::applyMove(const Move &move, Board &board) {
     board.enPassantSq,
     board.halfmoveClock,
     board.fullmoveClock,
+    board.zobristHash
   });
 
 
@@ -617,18 +623,11 @@ void Move_Handler::applyMove(const Move &move, Board &board) {
     else if(to == 56) board.castlingRights &= 14;
     else if(to == 63) board.castlingRights &= 13;  
   }
-  // const uint8_t newCastlingRights = board.castlingRights ^
-  //                           (((3 * !(movingPiece)) << (2 * side)) |
-  //                           (movingPiece == 4 && from == 0) << 2 |
-  //                           (movingPiece == 4 && from == 7) << 3 |
-  //                           (movingPiece == 4 && from == 56) << 0 |
-  //                           (movingPiece == 4 && from == 63) << 1);
-  // // board.castlingRights = (board.castlingRights < newCastlingRights) ? board.castlingRights : newCastlingRights;
-  // board.castlingRights &= newCastlingRights;
 
   board.enPassantSq = isADoublePush * enPassSq;
 
-  board.halfmoveClock += (!(board.pieces[side][5] & (Bitboard(1) << from)) && !isACapture);
+  board.halfmoveClock += 1;
+  if(movingPiece == 5 || isACapture) board.halfmoveClock = 0;
   board.fullmoveClock = board.halfmoveClock / 2 + 1;
 
   board.pieces[side][movingPiece] ^= Bitboard(1) << from;
@@ -643,6 +642,40 @@ void Move_Handler::applyMove(const Move &move, Board &board) {
     board.pieces[side][4] |= Bitboard(1) << (from - castlingSide + !castlingSide);
   }
   else board.pieces[side][movingPiece] |= Bitboard(1) << to;
+
+
+
+  // Updating zobrist hash
+  board.zobristHash ^= board.zobristKeys.pieceSquare[side][movingPiece][from];    // remove piece from source
+  if(!isPromotion) board.zobristHash ^= board.zobristKeys.pieceSquare[side][movingPiece][to];   // add piece at destination
+  else board.zobristHash ^= board.zobristKeys.pieceSquare[side][promotionPiece + 1][to];   // add the promoted piece instead
+
+  if(isACapture) {
+    uint8_t capSq = (enPassSq != 0) ? (enPassSq - side * 8 + !side * 8) : to;
+    board.zobristHash ^= board.zobristKeys.pieceSquare[!side][capturedPiece][capSq];  // remove captured piece
+  }
+
+  if(isACastle) {
+    // modifying rook data from hash
+    uint8_t rookFrom = from - castlingSide * 4 + !castlingSide * 3;
+    uint8_t rookTo   = from - castlingSide + !castlingSide;
+    board.zobristHash ^= board.zobristKeys.pieceSquare[side][4][rookFrom];
+    board.zobristHash ^= board.zobristKeys.pieceSquare[side][4][rookTo];
+  }
+  board.zobristHash ^= board.zobristKeys.castlingRights[board.undoStack.back().castlingRights];
+  board.zobristHash ^= board.zobristKeys.castlingRights[board.castlingRights];
+
+  if(board.undoStack.back().enPassantSq != 0) board.zobristHash ^= board.zobristKeys.enPassantFile[board.undoStack.back().enPassantSq % 8];
+  if(board.enPassantSq != 0) board.zobristHash ^= board.zobristKeys.enPassantFile[board.enPassantSq % 8];
+  
+  board.zobristHash ^= board.zobristKeys.sideToMove;
+
+
+  // // Updating end state data
+  // bool isOppKingInCheck = board.moveHandler.isSquareAttacked(board.pieces[!side][0], side, board);
+  // board.endState &= 255 - (1 << !side);
+  // board.endState |= isOppKingInCheck << !side;
+  // set three fold, five fold, and 50 move flag bits here only...
 }
 
 void Move_Handler::revertMove(const Move &move, Board &board) {
@@ -706,6 +739,8 @@ void Move_Handler::revertMove(const Move &move, Board &board) {
   board.enPassantSq    = undo.enPassantSq;
   board.halfmoveClock  = undo.halfmoveClock;
   board.fullmoveClock  = undo.fullmoveClock;
+  board.zobristHash = undo.zobristHash;
+  //assert(undo.zobristHash == board.zobristHash && "Zobrist hash drifted from full recomputation!");
   board.undoStack.pop_back();
 }
 
@@ -713,19 +748,19 @@ bool Move_Handler::isSquareAttacked(const Bitboard &square, const uint8_t &attac
   Bitboard enemyPawns = board.pieces[attackingSide][5];
   while(enemyPawns > 0) {
     uint8_t pos = __builtin_ctzll(enemyPawns);
-    if(board.moveHandler.pawnAttack[attackingSide][pos] & square) return true;
+    if(this -> pawnAttack[attackingSide][pos] & square) return true;
     enemyPawns &= (enemyPawns - 1);
   }
 
   Bitboard enemyKnights = board.pieces[attackingSide][3];
   while(enemyKnights > 0) {
     uint8_t pos = __builtin_ctzll(enemyKnights);
-    if(board.moveHandler.knightMove[pos] & square) return true;
+    if(this -> knightMove[pos] & square) return true;
     enemyKnights &= (enemyKnights - 1);
   }
   assert(board.pieces[attackingSide][0] != 0);
   uint8_t enemyKingPos = __builtin_ctzll(board.pieces[attackingSide][0]);
-  if(board.moveHandler.kingMove[enemyKingPos] & square) return true;
+  if(this -> kingMove[enemyKingPos] & square) return true;
 
   Bitboard enemyBishops = board.pieces[attackingSide][2];
   while(enemyBishops > 0) {
