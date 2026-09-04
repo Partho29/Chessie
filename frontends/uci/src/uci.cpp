@@ -11,6 +11,7 @@
 
 UCI::UCI() {
   this -> currentFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  this -> currAlgo = std::make_unique<AlphaBetaNegamax>();
 }
 
 UCI::~UCI() {
@@ -18,6 +19,7 @@ UCI::~UCI() {
     this -> stopRequested.store(true);
     this -> searchThread.join();
   }
+  this -> currAlgo.reset();
 }
 
 
@@ -518,8 +520,8 @@ void UCI::searchWorker()
       cerr << this -> game.gameStateToStr() << endl;
     }
     else {
-      SearchContext ctx = {*this -> game.board, *this -> game.moveHandler, stopRequested, -1, -1};
-      Move best = this -> game.currAlgo -> findBestMove(ctx);
+      SearchContext ctx = {game, stopRequested, 4, -1};
+      Move best = this -> currAlgo -> findBestMove(ctx, this -> game.legalMoves);
       this -> game.moveHandler -> applyMove(best, *this -> game.board);
       bestMoveStr += this -> game.moveHandler -> legalMoveToString(best);
     }

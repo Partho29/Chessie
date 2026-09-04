@@ -18,6 +18,7 @@ class UCI {
 
     // member data
     Game game;
+    std::unique_ptr<SearchAlgo> currAlgo;
     std::string currentFen;
     std::atomic<bool> stopRequested{false};
     std::atomic<bool> searching{false};

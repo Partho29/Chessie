@@ -9,7 +9,6 @@ void Game::init() {
   this -> gameState = Game::GameState::ONGOING;
   this -> board = std::make_unique<Board>();
   this -> moveHandler = std::make_unique<Move_Handler>();
-  this -> currAlgo = std::make_unique<RandomSearch>();
 }
 
 void Game::determineGameState() {

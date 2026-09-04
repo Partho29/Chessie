@@ -1,14 +1,12 @@
 #pragma once
 #include "board.h"
 #include "move_handler.h"
-#include "search.h"
 #include <memory>
 
 class Game {
   public : 
     std::unique_ptr<Board> board;
     std::unique_ptr<Move_Handler> moveHandler;
-    std::unique_ptr<SearchAlgo> currAlgo;
     std::vector<uint64_t> positionHistory;
     std::vector<Move> legalMoves;                      // Holds legal moves for the current playing side
 
