@@ -246,37 +246,74 @@ void UCI::handleGo(const std::vector<std::string> &tokens) {
   this -> stopSearch(false);          // If GUI sends go while search thread is already searching, we should stop the search thread first.
                                                    // We shouldn't allow two searches to modify the same engine simultaneously.
 
-  //this -> send("info string " + to_string(this -> board -> sideToMove));
+  int wtime = -1, btime = -1, winc = 0, binc = 0, movestogo = 0, movetime = -1, explicitDepth = -1;
+  bool infinite = false;
   // Parsing the search params
   for(int i = 1; i < tokens.size(); i++) {
     if(tokens[i] == "depth" && i + 1 < tokens.size()) {
-      int depth = std::stoi(tokens[++i]);
-      std::cerr << "Requested depth : " << depth << std::endl;
+      explicitDepth = std::stoi(tokens[++i]);
     }
     else if(tokens[i] == "movetime" && i + 1 < tokens.size()) {
-      int ms = std::stoi(tokens[++i]);
-      std::cerr << "Requested movetime : " << ms << "ms" << std::endl;
+      movetime = std::stoi(tokens[++i]);
     }
     else if(tokens[i] == "wtime" && i + 1 < tokens.size()) {
-      int ms = std::stoi(tokens[++i]);
-      std::cerr << "White time : " << ms << " ms\n";
+      wtime = std::stoi(tokens[++i]);
     }
     else if (tokens[i] == "btime" && i + 1 < tokens.size()) {
-        int ms = std::stoi(tokens[++i]);
-        std::cerr << "Black time : " << ms << " ms\n";
+        btime = std::stoi(tokens[++i]);
     }
     else if (tokens[i] == "winc" && i + 1 < tokens.size()) {
-      int ms = std::stoi(tokens[++i]);
-      std::cerr << "White increment: " << ms << " ms\n";
+      winc = std::stoi(tokens[++i]);
     }
     else if (tokens[i] == "binc" && i + 1 < tokens.size()) {
-      int ms = std::stoi(tokens[++i]);
-      std::cerr << "Black increment: " << ms << " ms\n";
+      binc = std::stoi(tokens[++i]);
     }
-    else if(tokens[i] == "infinite") std::cerr << "Infinite search\n";
+    else if (tokens[i] == "movestogo" && i + 1 < tokens.size()) movestogo = std::stoi(tokens[++i]);
+    else if(tokens[i] == "infinite") infinite = true;
     else if(tokens[i] == "ponder") std::cerr << "Ponder search\n";
   }
+
+  constexpr int SAFETY_MARGIN_MS = 50;   // reserved for I/O, thread-join, GUI round-trip overhead
+  constexpr int MIN_SEARCH_MS = 10;      // always search at least this long, even under extreme pressure
+
+  int allocatedMs;
   
+  if (movetime != -1) {
+    allocatedMs = movetime - SAFETY_MARGIN_MS;
+    this -> pendingMaxDepth = 64;
+  }
+  else if (explicitDepth != -1 && wtime == -1 && btime == -1) {
+    // "go depth N" with no clock info at all — fixed depth, no deadline
+    this -> pendingMaxDepth = explicitDepth;
+    this -> pendingDeadline = std::chrono::steady_clock::time_point::max();
+    this -> startSearch();
+    return;
+  }
+  else if (infinite || (wtime == -1 && btime == -1)) {
+    this -> pendingMaxDepth = explicitDepth != -1 ? explicitDepth : 64;
+    this -> pendingDeadline = std::chrono::steady_clock::time_point::max();
+    this -> startSearch();
+    return;
+  }
+  else {
+    bool weAreWhite = (this -> game.board -> sideToMove == 1);
+    int myTime = weAreWhite ? wtime : btime;
+    int myInc  = weAreWhite ? winc  : binc;
+
+    if (movestogo > 0) {
+      allocatedMs = (myTime / movestogo) + myInc - SAFETY_MARGIN_MS;
+    } else {
+      // sudden death — no known checkpoint, assume ~30 moves remain as a rough divisor
+      allocatedMs = (myTime / 30) + myInc - SAFETY_MARGIN_MS;
+    }
+    // never plan to spend more than a large fraction of what's actually left
+    allocatedMs = std::min(allocatedMs, myTime - SAFETY_MARGIN_MS);
+    this -> pendingMaxDepth = explicitDepth != -1 ? explicitDepth : 64;
+  }
+
+  allocatedMs = std::max(allocatedMs, MIN_SEARCH_MS);
+  this -> pendingDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(allocatedMs);
+
   this -> startSearch();
 }
 
@@ -520,7 +557,7 @@ void UCI::searchWorker()
       cerr << this -> game.gameStateToStr() << endl;
     }
     else {
-      SearchContext ctx = {game, stopRequested, 4, -1};
+      SearchContext ctx = {game, stopRequested, this -> pendingMaxDepth, this -> pendingDeadline};
       Move best = this -> currAlgo -> findBestMove(ctx, this -> game.legalMoves);
       this -> game.moveHandler -> applyMove(best, *this -> game.board);
       bestMoveStr += this -> game.moveHandler -> legalMoveToString(best);

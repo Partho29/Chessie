@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <chrono>
 
 using Evaluation_Function = std::function<int(const Board&)>;
 
@@ -14,8 +15,8 @@ std::string evalFnToStr(const std::shared_ptr<Evaluation_Function>&);
 struct SearchContext {
   Game &game;
   std::atomic<bool> &stopRequested;
-  int depth;                                  // Used by fixed-depth algos, ignored by others
-  int timeLimitMs;                            // Used by iterative deepening; not currently needed
+  int maxDepth;                                      // hard ceiling — 64 by default, or user-specified via "go depth N"
+  std::chrono::steady_clock::time_point deadline;    // wall-clock time the search must stop by
 };
 
 
@@ -32,8 +33,34 @@ class RandomSearch : public SearchAlgo {
     std::string name() const override;
 };
 
-class NegamaxSearch : public SearchAlgo {
+// The basis is Negamax for all the below algos...
+
+class Base : public SearchAlgo {
   private :
+    long long nodeCount = 0;
+    std::chrono::steady_clock::time_point deadline;
+    std::shared_ptr<Evaluation_Function> evalFn = std::make_shared<Evaluation_Function>(materialOnlyEvaluation);
+    int negamax(Game&, int, std::atomic<bool>&);
+  public :
+    Move findBestMove(SearchContext &ctx, std::vector<Move> legalMoves) override;
+    std::string name() const override;
+};
+
+class AB : public SearchAlgo {
+  private :
+    long long nodeCount = 0;
+    std::chrono::steady_clock::time_point deadline;
+    std::shared_ptr<Evaluation_Function> evalFn = std::make_shared<Evaluation_Function>(materialOnlyEvaluation);
+    int negamax(Game&, int, int, int, std::atomic<bool>&);
+  public :
+    Move findBestMove(SearchContext &ctx, std::vector<Move> legalMoves) override;
+    std::string name() const override;
+};
+
+class ID : public SearchAlgo {
+  private :
+    long long nodeCount = 0;
+    std::chrono::steady_clock::time_point deadline;
     std::shared_ptr<Evaluation_Function> evalFn = std::make_shared<Evaluation_Function>(materialOnlyEvaluation);
     int negamax(Game&, int, std::atomic<bool>&);
   public :
@@ -42,10 +69,12 @@ class NegamaxSearch : public SearchAlgo {
 
 };
 
-class AlphaBetaNegamax : public SearchAlgo {
-  private :
+class IDAB : public SearchAlgo {
+  private:
+    long long nodeCount = 0;
+    std::chrono::steady_clock::time_point deadline;
     std::shared_ptr<Evaluation_Function> evalFn = std::make_shared<Evaluation_Function>(materialOnlyEvaluation);
-    int alphaBetaNegamax(Game&, int, int, int, std::atomic<bool>&);
+    int negamax(Game&, int, int, int, std::atomic<bool>&);
   public :
     Move findBestMove(SearchContext &ctx, std::vector<Move> legalMoves) override;
     std::string name() const override;

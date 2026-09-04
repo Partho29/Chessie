@@ -27,6 +27,9 @@ class UCI {
     std::mutex stateMutex;                         // protects curretFen / other engine state info
     std::atomic<bool> quitting{false};          // used to distinguish between stopping and quitting
 
+    int pendingMaxDepth = 64;
+    std::chrono::steady_clock::time_point pendingDeadline;
+
     
 
     

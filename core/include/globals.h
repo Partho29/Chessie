@@ -12,7 +12,8 @@ using namespace std;
 
 #define MAGIC_NUMBER TODO
 
-#define INFINITY 10000
+#define INF 1000000
+#define MATE_VAL 30000
 
 typedef uint64_t Bitboard;
 
